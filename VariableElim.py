@@ -49,18 +49,21 @@ class VariableElim(BayesNet):
     '''
     def solve(self, values, printer=None):
         just_evidence_vars = [var for var in values if var is not None and not var.isupper()]
-        tables = self.enact_evidence(just_evidence_vars, printer)
+        tables = self.enact_evidence(just_evidence_vars)
         hidden_vars = self.get_hidden_vars(values)
         for var in hidden_vars:
             tables, key = self.join_and_eliminate(var, tables, printer)
-        joined = tables[key] if len(tables) == 1 else self.join(tables, list(tables.keys()))
+        remaining_keys = list(tables.keys())
+        joined = tables[key] if len(tables) == 1 else self.join(tables, remaining_keys)
+        if printer:
+            printer(joined,'Join Remaining: ' + '_'.join(remaining_keys))
         is_distribution = len(values) != len(hidden_vars) + len(just_evidence_vars)
         final = self.normalize(joined) if is_distribution else joined
         if printer:
-            BayesNet.print_table(final)
+            printer(final, 'Final: ')
         return self.round_last(final, 5)
 
-    def enact_evidence(self, values, printer):
+    def enact_evidence(self, values, printer=None):
 
         # Create a dict where variable names of all variables whose values are provided as evidence point
         # to the index in values that has their sign.
@@ -121,7 +124,7 @@ class VariableElim(BayesNet):
 
         tables[table_key] = VariableElim.sum_out(tables[table_key], k)
         if printer:
-            printer(tables)
+            printer(tables[table_key], 'Join and Eliminate: ' + table_key)
         return tables, table_key
 
     @staticmethod
@@ -147,14 +150,13 @@ class VariableElim(BayesNet):
         return p_new
 
     @staticmethod
-    def print_tables(tables):
-        for prob_table_key, prob_list in tables.items():
-            s = 0
-            print('Table: ' + prob_table_key)
-            for i, row in enumerate(prob_list, start=0):
-                print(i, row[:-1] + [round(row[-1], 5)])
-                s += row[-1]
-            print('sum = {}\n'.format(s))
+    def print_table(table, key):
+        s = 0
+        print(key)
+        for i, row in enumerate(table, start=0):
+            print(i, row[:-1] + [round(row[-1], 5)])
+            s += row[-1]
+        print('sum = {}\n'.format(s))
 
 
 if __name__ == '__main__':
@@ -172,7 +174,7 @@ if __name__ == '__main__':
     bn = VariableElim(parents, probs)
 
     # P(A | +e,-f)
-    bn.solve(('A', None, None, None, '+e', '-f'), printer=VariableElim.print_tables)
+    bn.solve(('A', None, None, None, '+e', '-f'), printer=VariableElim.print_table)
 
     # P(+e,-b,+c,-d,+e,-f)
-    bn.solve(('+a', '-b', '+c', '-d', '+e', '-f'), printer=VariableElim.print_tables)
+    bn.solve(('+a', '-b', '+c', '-d', '+e', '-f'), printer=VariableElim.print_table)
