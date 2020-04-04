@@ -31,7 +31,7 @@ class InfByEnum(BayesNet):
 
            # P(A | +e, -f)
            p_aef = bn.sum_out_many(['B', 'C', 'D'])
-           final = bn.solve(p_aef, (None, '+e', '-f'), printer=BayesNet.print_table)
+           final = bn.solve(p_aef, ('A', '+e', '-f'), printer=BayesNet.print_table)
 
            # P(+e, -b, +c, -d, +e, -f)
            final = bn.solve(bn.jpt, ('+a', '-b', '+c', '-d', '+e', '-f'), printer=BayesNet.print_table)
@@ -78,12 +78,30 @@ class InfByEnum(BayesNet):
         return jpt
 
     '''
+        Sum out the kth column in joint probability table.
+    '''
+    @staticmethod
+    def sum_out(p_x, k, printer=None):
+        p_new = []
+        collapsed = set()
+        for i in range(len(p_x)):
+            if i in collapsed:
+                continue
+            adjusted_idx = i + (len(p_x) >> 1 + k)
+            s = p_x[i][-1] + p_x[adjusted_idx][-1]
+            p_new.append(p_x[i][0:k] + p_x[i][k + 1:len(p_x[i]) - 1] + [s])
+            collapsed.add(adjusted_idx)
+        if printer is not None:
+            printer(p_new)
+        return p_new
+
+    '''
         Solve for the provided variables in the tuple 'values'. For now, all variables
         but 1 must have a hard value provided (e.g., +b or -c). The variable that can vary
-        is just specified as None:
+        is just specified as their uppercase representation (e.g., 'A'):
 
-            ex: (None, '+e', '-f') assumes the jpt has been condensed to 3 variables and will
-                allow the first variable to vary but restrict 'E' to '+e' and 'F' to '-f'.
+            ex: ('A', '+e', '-f') assumes the jpt has been condensed to 3 variables and will
+                allow A to vary but restrict 'E' to '+e' and 'F' to '-f'.
     '''
     @classmethod
     def solve(cls, p_x, values, printer=None):
@@ -93,7 +111,7 @@ class InfByEnum(BayesNet):
         for i, row in enumerate(p_x, start=0):
             matches = True
             for j, label in enumerate(row[0:-1], start=0):
-                if values[j] is not None and values[j] != label:
+                if not values[j].isupper() and values[j] != label:
                     matches = False
                     break
             if not matches:
@@ -123,11 +141,8 @@ if __name__ == '__main__':
 
     # P(A | +e,-f)
     p_aef = bn.sum_out_many(bn.jpt, ['B', 'C', 'D'])
-    bn.solve(p_aef, (None, '+e', '-f'), printer=BayesNet.print_table)
-
-    # P(A,B | +e,-f) -> not sure this correct yet
-    p_abef = bn.sum_out_many(bn.jpt, ['C', 'D'])
-    bn.solve(p_abef, (None, None, '+e', '-f'), printer=BayesNet.print_table)
+    bn.solve(p_aef, ('A', '+e', '-f'), printer=BayesNet.print_table)
 
     # P(+e,-b,+c,-d,+e,-f)
     bn.solve(bn.jpt, ('+a', '-b', '+c', '-d', '+e', '-f'), printer=BayesNet.print_table)
+

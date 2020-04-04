@@ -31,22 +31,11 @@ class BayesNet:
         return summed_out
 
     '''
-        Sum out the kth column in joint probability table.
+        Round the last column of each vector to the given decimal place.
     '''
     @staticmethod
-    def sum_out(p_x, k, printer=None):
-        p_new = []
-        collapsed = set()
-        for i in range(len(p_x)):
-            if i in collapsed:
-                continue
-            adjusted_idx = i + (len(p_x) >> 1 + k)
-            s = p_x[i][-1] + p_x[adjusted_idx][-1]
-            p_new.append(p_x[i][0:k] + p_x[i][k + 1:len(p_x[i]) - 1] + [s])
-            collapsed.add(adjusted_idx)
-        if printer is not None:
-            printer(p_new)
-        return p_new
+    def round_last(table, k):
+        return [row[:-1] + [round(row[-1], k)] for row in table]
 
     '''
         Ensure all row probabilities sum to 1.
